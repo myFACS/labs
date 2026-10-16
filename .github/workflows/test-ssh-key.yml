@@ -1,6 +1,6 @@
 name: Test SSH Key
 
-# Prints the SSH_KEY secret and KEY_NAME (variable or secret) configured for a
+# Prints KEY_NAME (variable or secret) and identifies the SSH_KEY secret for a
 # GitHub environment. Can be run manually on any branch (workflow_dispatch) or
 # reused from other workflows (workflow_call).
 # The SSH_KEY private key is never printed; its derived public key
@@ -51,7 +51,7 @@ jobs:
             echo "::warning::SSH_KEY secret is not set for environment '$ENVIRONMENT'"
             exit 0
           fi
-          echo "SSH_KEY length: ${#SSH_KEY} characters, $(printf '%s\n' "$SSH_KEY" | wc -l) lines"
+          echo "SSH_KEY length: ${#SSH_KEY} characters, $(printf '%s' "$SSH_KEY" | grep -c '') lines"
           key_file="$(mktemp)"
           trap 'rm -f "$key_file"' EXIT
           printf '%s\n' "$SSH_KEY" > "$key_file"

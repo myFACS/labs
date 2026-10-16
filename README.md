@@ -5,7 +5,7 @@ A sandbox repository for experiments, testing, and proof-of-concept implementati
 
 ### Test SSH Key (`.github/workflows/test-ssh-key.yml`)
 
-Prints the `SSH_KEY` secret and `KEY_NAME` (environment variable or secret) configured for a GitHub environment:
+Prints `KEY_NAME` (environment variable or secret) and identifies the `SSH_KEY` secret configured for a GitHub environment:
 
 - `KEY_NAME` as a variable is printed in plain text; as a secret it is masked (`***`) by GitHub.
 - `SSH_KEY` (private key) is never written to the log; its length, derived public key and fingerprint are printed instead, so you can identify which key is configured without leaking it.
