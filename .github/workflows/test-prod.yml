@@ -1,0 +1,14 @@
+name: Test Prod Environment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-prod:
+    uses: myFACS/labs/.github/workflows/test-environment.yml@main
+    with:
+      environment: production
+    secrets: inherit
