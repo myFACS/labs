@@ -7,12 +7,6 @@ name: Test SSH Key
 # and fingerprint are printed so the key can be identified without leaking it.
 
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: GitHub environment that holds SSH_KEY and KEY_NAME
-        type: environment
-        required: true
   workflow_call:
     inputs:
       environment:
@@ -30,29 +24,29 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       ENVIRONMENT: ${{ inputs.environment }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
-      KEY_NAME_SECRET: ${{ secrets.KEY_NAME }}
-      KEY_NAME_VAR: ${{ vars.KEY_NAME }}
+      TEST_A: ${{ secrets.SSH_KEY }}
+      TEST_B: ${{ secrets.KEY_NAME }}
+      TEST_C: ${{ vars.KEY_NAME }}
     steps:
       - name: Print KEY_NAME
         run: |
           echo "Environment: $ENVIRONMENT"
           echo "Variables"
-          if [ -n "$KEY_NAME_VAR" ]; then
-            echo "KEY_NAME (variable): $KEY_NAME_VAR"
+          if [ -n "$TEST_C" ]; then
+            echo "KEY_NAME (variable): $TEST_C"
           else
-            echo "::warning::KEY_NAME_VAR is not set as a variable for environment '$ENVIRONMENT'"
+            echo "::warning::TEST_C is not set as a variable for environment '$ENVIRONMENT'"
           fi
 
           echo "Secrets"
-          if [ -n "$KEY_NAME_SECRET" ]; then
-            echo "KEY_NAME (secret, masked): $KEY_NAME_SECRET"
+          if [ -n "$TEST_B" ]; then
+            echo "KEY_NAME: $TEST_B"
           else
-            echo "::warning::KEY_NAME_SECRET is not set as a secret for environment '$ENVIRONMENT'"
+            echo "::warning::TEST_B is not set as a secret for environment '$ENVIRONMENT'"
           fi
 
-          if [ -n "$SSH_KEY" ]; then
-            echo "SSH_KEY (secret, masked): $SSH_KEY"
+          if [ -n "$TEST_A" ]; then
+            echo "SSH_KEY: $TEST_A"
           else
-            echo "::warning::SSH_KEY secret is not set for environment '$ENVIRONMENT'"
+            echo "::warning::TEST_A secret is not set for environment '$ENVIRONMENT'"
           fi

@@ -1,0 +1,14 @@
+name: Test QA Environment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-qa:
+    uses: myFACS/labs/.github/workflows/test-environment.yml@main
+    with:
+      environment: qa
+    secrets: inherit
