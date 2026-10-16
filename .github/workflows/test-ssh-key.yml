@@ -1,0 +1,63 @@
+name: Test SSH Key
+
+# Prints KEY_NAME (variable or secret) and identifies the SSH_KEY secret for a
+# GitHub environment. Can be run manually on any branch (workflow_dispatch) or
+# reused from other workflows (workflow_call).
+# The SSH_KEY private key is never printed; its derived public key
+# and fingerprint are printed so the key can be identified without leaking it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub environment that holds SSH_KEY and KEY_NAME
+        type: environment
+        required: true
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment that holds SSH_KEY and KEY_NAME
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-ssh-key:
+    name: Print SSH_KEY and KEY_NAME (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      KEY_NAME_VAR: ${{ vars.KEY_NAME }}
+      KEY_NAME_SECRET: ${{ secrets.KEY_NAME }}
+    steps:
+      - name: Print KEY_NAME
+        run: |
+          echo "Environment: $ENVIRONMENT"
+          if [ -n "$KEY_NAME_VAR" ]; then
+            echo "KEY_NAME (variable): $KEY_NAME_VAR"
+          elif [ -n "$KEY_NAME_SECRET" ]; then
+            echo "KEY_NAME (secret, masked): $KEY_NAME_SECRET"
+          else
+            echo "::warning::KEY_NAME is not set as a variable or secret for environment '$ENVIRONMENT'"
+          fi
+
+      - name: Print SSH_KEY
+        run: |
+          if [ -z "$SSH_KEY" ]; then
+            echo "::warning::SSH_KEY secret is not set for environment '$ENVIRONMENT'"
+            exit 0
+          fi
+          echo "SSH_KEY length: ${#SSH_KEY} characters, $(printf '%s' "$SSH_KEY" | grep -c '') lines"
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s\n' "$SSH_KEY" > "$key_file"
+          if public_key="$(ssh-keygen -y -P '' -f "$key_file" 2>/dev/null)"; then
+            echo "SSH_KEY public key: $public_key"
+            echo "SSH_KEY fingerprint: $(printf '%s\n' "$public_key" | ssh-keygen -l -f -)"
+          else
+            echo "::warning::SSH_KEY is not a valid private key or is protected by a passphrase"
+          fi
