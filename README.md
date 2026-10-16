@@ -3,13 +3,11 @@ A sandbox repository for experiments, testing, and proof-of-concept implementati
 
 ## Workflows
 
-### Test SSH Key (`.github/workflows/test-ssh-key.yml`)
+### Test SSH Key (`.github/workflows/test-environment.yml`)
 
-Prints `KEY_NAME` (environment variable or secret) and identifies the `SSH_KEY` secret configured for a GitHub environment:
+Verify the presence of environment variables or secrets
 
-- `KEY_NAME` as a variable is printed in plain text; as a secret it is masked (`***`) by GitHub.
-- `SSH_KEY` (private key) is never written to the log; its length, derived public key and fingerprint are printed instead, so you can identify which key is configured without leaking it.
-- Missing values are reported as warnings.
+- `KEY_NAME` - `SSH_KEY` (secrets) and `KEY_NAME` (variables)
 
 **Run manually on a branch:** *Actions → Test SSH Key → Run workflow*, pick the branch and the environment.
 
@@ -18,7 +16,7 @@ Prints `KEY_NAME` (environment variable or secret) and identifies the `SSH_KEY` 
 ```yaml
 jobs:
   test-ssh-key:
-    uses: myFACS/labs/.github/workflows/test-ssh-key.yml@main
+    uses: myFACS/labs/.github/workflows/test-environment.yml@main
     with:
       environment: production
 ```
