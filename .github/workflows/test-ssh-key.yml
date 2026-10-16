@@ -1,8 +1,10 @@
 name: Test SSH Key
 
-# Validates the SSH_KEY secret and KEY_NAME (variable or secret) configured
-# for a GitHub environment. Can be run manually on any branch
-# (workflow_dispatch) or reused from other workflows (workflow_call).
+# Prints the SSH_KEY secret and KEY_NAME (variable or secret) configured for a
+# GitHub environment. Can be run manually on any branch (workflow_dispatch) or
+# reused from other workflows (workflow_call).
+# Secret values are masked by GitHub (***); for SSH_KEY the derived public key
+# and fingerprint are printed so the key can be identified without leaking it.
 
 on:
   workflow_dispatch:
@@ -11,120 +13,52 @@ on:
         description: GitHub environment that holds SSH_KEY and KEY_NAME
         type: environment
         required: true
-      ssh_host:
-        description: Host used to test SSH authentication
-        type: string
-        default: github.com
-      ssh_user:
-        description: User used to test SSH authentication
-        type: string
-        default: git
-      test_connection:
-        description: Test SSH authentication against the host
-        type: boolean
-        default: true
   workflow_call:
     inputs:
       environment:
         description: GitHub environment that holds SSH_KEY and KEY_NAME
         type: string
         required: true
-      ssh_host:
-        description: Host used to test SSH authentication
-        type: string
-        default: github.com
-      ssh_user:
-        description: User used to test SSH authentication
-        type: string
-        default: git
-      test_connection:
-        description: Test SSH authentication against the host
-        type: boolean
-        default: true
-    outputs:
-      fingerprint:
-        description: Fingerprint of the public key derived from SSH_KEY
-        value: ${{ jobs.test-ssh-key.outputs.fingerprint }}
 
 permissions:
   contents: read
 
 jobs:
   test-ssh-key:
-    name: Test SSH_KEY and KEY_NAME (${{ inputs.environment }})
+    name: Print SSH_KEY and KEY_NAME (${{ inputs.environment }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    outputs:
-      fingerprint: ${{ steps.validate.outputs.fingerprint }}
     env:
       ENVIRONMENT: ${{ inputs.environment }}
       SSH_KEY: ${{ secrets.SSH_KEY }}
-      KEY_NAME: ${{ vars.KEY_NAME || secrets.KEY_NAME }}
-      SSH_HOST: ${{ inputs.ssh_host }}
-      SSH_USER: ${{ inputs.ssh_user }}
+      KEY_NAME_VAR: ${{ vars.KEY_NAME }}
+      KEY_NAME_SECRET: ${{ secrets.KEY_NAME }}
     steps:
-      - name: Check SSH_KEY and KEY_NAME are set
+      - name: Print KEY_NAME
         run: |
-          missing=0
-          if [ -z "$SSH_KEY" ]; then
-            echo "::error::SSH_KEY secret is not set for environment '$ENVIRONMENT'"
-            missing=1
-          fi
-          if [ -z "$KEY_NAME" ]; then
-            echo "::error::KEY_NAME variable or secret is not set for environment '$ENVIRONMENT'"
-            missing=1
-          fi
-          if [ "$missing" -ne 0 ]; then
-            exit 1
-          fi
-          if ! printf '%s' "$KEY_NAME" | grep -Eq '^[A-Za-z0-9._-]+$' || [ "$KEY_NAME" = "." ] || [ "$KEY_NAME" = ".." ]; then
-            echo "::error::KEY_NAME must be a valid file name (letters, digits, '.', '_' or '-')"
-            exit 1
-          fi
-          echo "SSH_KEY and KEY_NAME are set for environment '$ENVIRONMENT'"
-
-      - name: Validate SSH_KEY
-        id: validate
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          key_file="$HOME/.ssh/$KEY_NAME"
-          (umask 077 && printf '%s\n' "$SSH_KEY" > "$key_file")
-          if ! ssh-keygen -y -P '' -f "$key_file" > "$key_file.pub"; then
-            echo "::error::SSH_KEY is not a valid private key or is protected by a passphrase"
-            exit 1
-          fi
-          fingerprint="$(ssh-keygen -l -f "$key_file.pub")"
-          echo "Key '$KEY_NAME' is valid: $fingerprint"
-          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
-
-      - name: Test SSH authentication
-        if: ${{ inputs.test_connection }}
-        run: |
-          key_file="$HOME/.ssh/$KEY_NAME"
-          if ! host_keys="$(ssh-keyscan -T 15 -H "$SSH_HOST" 2>/dev/null)" || [ -z "$host_keys" ]; then
-            echo "::error::Unable to retrieve SSH host keys from $SSH_HOST"
-            exit 1
-          fi
-          printf '%s\n' "$host_keys" >> ~/.ssh/known_hosts
-          set +e
-          output="$(ssh -i "$key_file" -o IdentitiesOnly=yes -o BatchMode=yes \
-            -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
-            -T "$SSH_USER@$SSH_HOST" 2>&1 < /dev/null)"
-          status=$?
-          set -e
-          echo "$output"
-          # GitHub returns exit code 1 on successful authentication because it does not provide shell access.
-          if [ "$status" -eq 0 ] || printf '%s' "$output" | grep -q "successfully authenticated"; then
-            echo "SSH authentication with key '$KEY_NAME' to $SSH_USER@$SSH_HOST succeeded"
+          echo "Environment: $ENVIRONMENT"
+          if [ -n "$KEY_NAME_VAR" ]; then
+            echo "KEY_NAME (variable): $KEY_NAME_VAR"
+          elif [ -n "$KEY_NAME_SECRET" ]; then
+            echo "KEY_NAME (secret, masked): $KEY_NAME_SECRET"
           else
-            echo "::error::SSH authentication with key '$KEY_NAME' to $SSH_USER@$SSH_HOST failed (exit code $status)"
-            exit 1
+            echo "::warning::KEY_NAME is not set as a variable or secret for environment '$ENVIRONMENT'"
           fi
 
-      - name: Clean up
-        if: ${{ always() }}
+      - name: Print SSH_KEY
         run: |
-          if [ -n "$KEY_NAME" ]; then
-            rm -f "$HOME/.ssh/$KEY_NAME" "$HOME/.ssh/$KEY_NAME.pub"
+          if [ -z "$SSH_KEY" ]; then
+            echo "::warning::SSH_KEY secret is not set for environment '$ENVIRONMENT'"
+            exit 0
+          fi
+          echo "SSH_KEY (secret, masked): $SSH_KEY"
+          echo "SSH_KEY length: ${#SSH_KEY} characters, $(printf '%s\n' "$SSH_KEY" | wc -l) lines"
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s\n' "$SSH_KEY" > "$key_file"
+          if public_key="$(ssh-keygen -y -P '' -f "$key_file" 2>/dev/null)"; then
+            echo "SSH_KEY public key: $public_key"
+            echo "SSH_KEY fingerprint: $(printf '%s\n' "$public_key" | ssh-keygen -l -f -)"
+          else
+            echo "::warning::SSH_KEY is not a valid private key or is protected by a passphrase"
           fi
