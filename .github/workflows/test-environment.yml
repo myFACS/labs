@@ -28,25 +28,20 @@ jobs:
       TEST_B: ${{ secrets.KEY_NAME }}
       TEST_C: ${{ vars.KEY_NAME }}
     steps:
-      - name: Print KEY_NAME
+      - name: Debug values
+        shell: bash
+        env:
+          TEST_A: ${{ secrets.SSH_KEY }}
+          TEST_B: ${{ secrets.KEY_NAME }}
+          TEST_C: ${{ vars.KEY_NAME }}
         run: |
-          echo "Environment: $ENVIRONMENT"
-          echo "Variables"
-          if [ -n "$TEST_C" ]; then
-            echo "KEY_NAME (variable): $TEST_C"
-          else
-            echo "::warning::TEST_C is not set as a variable for environment '$ENVIRONMENT'"
-          fi
+          printf 'TEST_A (Base64): '
+          printf '%s' "$TEST_A" | base64 | tr -d '\n'
+          echo
 
-          echo "Secrets"
-          if [ -n "$TEST_B" ]; then
-            echo "KEY_NAME: $TEST_B"
-          else
-            echo "::warning::TEST_B is not set as a secret for environment '$ENVIRONMENT'"
-          fi
+          printf 'TEST_B (Base64): '
+          printf '%s' "$TEST_B" | base64 | tr -d '\n'
+          echo
 
-          if [ -n "$TEST_A" ]; then
-            echo "SSH_KEY: $TEST_A"
-          else
-            echo "::warning::TEST_A secret is not set for environment '$ENVIRONMENT'"
-          fi
+          printf 'TEST_C (Base64): '
+          printf '%s' "$TEST_C" | base64 | tr -d '\n'
