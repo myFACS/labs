@@ -24,24 +24,29 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       ENVIRONMENT: ${{ inputs.environment }}
-      TEST_A: ${{ secrets.SSH_KEY }}
-      TEST_B: ${{ secrets.KEY_NAME }}
-      TEST_C: ${{ vars.KEY_NAME }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      KEY_NAME_SECRETS: ${{ secrets.KEY_NAME }}
+      KEY_NAME: ${{ vars.KEY_NAME }}
     steps:
-      - name: Debug values
+      - name: Check secrets and variables
         shell: bash
-        env:
-          TEST_A: ${{ secrets.SSH_KEY }}
-          TEST_B: ${{ secrets.KEY_NAME }}
-          TEST_C: ${{ vars.KEY_NAME }}
         run: |
-          printf 'TEST_A (Base64): '
-          printf '%s' "$TEST_A" | base64 | tr -d '\n'
-          echo
+          echo "Environment: $ENVIRONMENT"
 
-          printf 'TEST_B (Base64): '
-          printf '%s' "$TEST_B" | base64 | tr -d '\n'
-          echo
+          if [[ -n "$SSH_KEY" ]]; then
+            echo "SSH_KEY secret exists and is not empty"
+          else
+            echo "::warning::SSH_KEY secret is missing or empty"
+          fi
 
-          printf 'TEST_C (Base64): '
-          printf '%s' "$TEST_C" | base64 | tr -d '\n'
+          if [[ -n "$KEY_NAME_SECRETS" ]]; then
+            echo "KEY_NAME_SECRETS secret exists and is not empty"
+          else
+            echo "::warning::KEY_NAME_SECRETS secret is missing or empty"
+          fi
+
+          if [[ -n "$KEY_NAME" ]]; then
+            echo "KEY_NAME variable exists and is not empty"
+          else
+            echo "::warning::KEY_NAME variable is missing or empty"
+          fi
